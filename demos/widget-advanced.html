@@ -1,0 +1,91 @@
+<html>
+<head><title>Test widget</title>
+<script>
+var ourWidgetId = null;
+var sentPackets = 0;
+
+function sendPacket() {
+	var p = prompt("Message to send:");
+	if (p == null || p.length == 0) return;
+	sentPackets++;
+	post("sendPacket", {msg:p, count:sentPackets});
+	
+}
+function onSentPacket(o) {
+	console.log("onSentPacket");
+	console.dir(o);
+}
+
+function receivePackets() {
+	post("receivePackets", {}, "onReceivedPacket");
+
+}
+function onReceivedPacket(o) {
+	console.log("Received:");
+	console.dir(o);
+	document.getElementById("lastReceived").innerText = JSON.stringify(o);
+}
+
+function persist() {
+	if (ourWidgetId == null) return;
+	var d = {
+		id: ourWidgetId,
+		meta: JSON.stringify({
+			sentPackets: sentPackets
+		})
+	}
+	post("updateWidget", d, "onUpdateWidget");
+}
+
+function onUpdateWidget(d) {
+	if (d.ok) console.log("Saved!");
+}
+
+function onSelf(d) {
+	try {
+		var meta = JSON.parse(d.meta);
+		console.log("Metadata fetched:");
+		console.dir(meta);
+		sentPackets = meta.sentPackets;
+	} catch (e) {
+	}
+}
+
+
+// Helper function
+function post(cmd, data, callback) {
+	var m = {cmd:cmd, data:data};
+	if (typeof(callback) !== 'undefined') m.callback = callback;
+	console.log("Posting: " + JSON.stringify(m));
+	parent.postMessage(m, "*");
+}
+
+// Wire-up listening for responses
+window.addEventListener("message", function(e) {
+	if (e.data.reply) {
+		// Reply
+		if (e.data.callback) {
+			var cb = e.data.callback;
+			eval(e.data.callback)(e.data.data);
+		}
+	} else if (e.data.fltspc && e.data.fltspc == "hello") {
+		// App telling us what widget we are loaded in
+		ourWidgetId = e.data.widget;
+		post("getWidget", ourWidgetId, "onSelf");
+	} else {
+		console.log("Message received!");
+		console.dir(e);	
+	}
+
+}, false);
+
+</script>
+<body>
+	<p>This demonstrates advanced interaction with fltspc. Data is printed to the console.</p>
+	<p id="lastReceived"></p>
+	<button onClick="sendPacket();">Send packet</button>
+	<button onClick="receivePackets();">Listen for packets</button>
+	<button onClick="persist();">Persist data</button>
+	
+</body>
+</html>

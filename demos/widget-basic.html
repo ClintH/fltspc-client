@@ -1,0 +1,146 @@
+<html>
+<head><title>Test widget</title>
+<script>
+var ourWidgetId = null;
+
+// -----------
+// Get commands
+function getSurface() {
+	post("getSurface", {}, "onSurface");
+}
+
+function getSurfaceWidgets() {
+	post("getSurfaceWidgets", {}, "onSurfaceWidgets");
+}
+
+function getUser() {
+	post("getUser", {}, "onUser");
+}
+// Result handlers
+function onSelf(d) {
+	console.log("Hosting Widget:");
+	console.dir(d);
+}
+
+function onSurface(d) {
+	console.log("Surface:");
+	console.dir(d);
+}
+
+function onSurfaceWidgets(d) {
+	console.log("Surface widgets:");
+	console.dir(d);
+}
+
+function onUser(d) {
+	console.log("User:");
+	console.dir(d);
+}
+// End Get commands
+
+// --------------
+// Edit commands
+function createWidget() {
+	post("createWidget", {
+		title: "Widget created by a widget",
+		content: "Nice.",
+		type: "label",
+		bgColour: "red"
+	}, "onCreateWidget");
+}
+
+function deleteWidget() {
+	var id = prompt("Id of widget");
+	if (id == null || id.length == 0) return;
+	// deleteWidget expects an array of widget ids
+	post("deleteWidget", [id], "onDeleteWidget");
+}
+
+// Assigns a random background colour to a widget
+function updateWidget() {
+	var id = prompt("Id of widget to update");
+	if (id == null || id.length == 0) return;
+	var d = {
+		id: id,
+		bgColour: '#'+(Math.random()*0xFFFFFF<<0).toString(16)// random hex  colour
+	}
+	post("updateWidget", d, "onUpdateWidget");
+}
+
+// Assigns a random background colour to the surface
+function updateSurface() {
+	var d = {
+		bgColour: '#'+(Math.random()*0xFFFFFF<<0).toString(16)// random hex colour
+	}
+	post("updateSurface", d, "onUpdateSurface");
+}
+
+function onCreateWidget(d) {
+	console.log("onCreateWidget:");
+	console.dir(d);
+}
+
+// We only get notified if there was an error
+function onDeleteWidget(d) {
+	console.log("onDeleteWidget:");
+	console.dir(d);
+}
+
+function onUpdateWidget(d) {
+	console.log("onUpdateWidget:");
+	console.dir(d);
+}
+
+function onUpdateSurface(d) {
+	console.log("onUpdateSurface:");
+	console.dir(d);
+}
+
+// End edit commands
+// ----------------------
+
+// Helper function
+function post(cmd, data, callback) {
+	var m = {cmd:cmd, data:data, callback:callback};
+	console.log("Posting: " + JSON.stringify(m));
+	parent.postMessage(m, "*");
+}
+
+// Wire-up listening for responses
+window.addEventListener("message", function(e) {
+	if (e.data.reply) {
+		// Reply
+		if (e.data.callback) {
+			var cb = e.data.callback;
+			eval(e.data.callback)(e.data.data);
+		}
+	} else if (e.data.fltspc == "hello") {
+		// App telling us what widget we are loaded in
+		ourWidgetId = e.data.widget;
+		document.getElementById("widgetId").innerText = "Widget id: " + ourWidgetId;
+
+		// Demonstrate getting info on a particular widget, 
+		// in this case, the widget the page is loaded into
+		post("getWidget", ourWidgetId, "onSelf");
+	} else {
+		console.log("Message received!");
+		console.dir(e);	
+	}
+
+}, false);
+
+</script>
+<body>
+	<p>This demonstrates basic interaction with fltspc. Data is printed to the console.</p>
+	<p id="widgetId">Unknown widget.</p>
+	<h2>Get</h2>
+	<button onClick="getSurface();">getSurface</button>
+	<button onClick="getSurfaceWidgets();">getSurfaceWidgets</button>
+	<button onClick="getUser();">getUser</button>
+	<h2>Edit</h2>
+	<button onClick="createWidget();">createWidget</button>
+	<button onClick="deleteWidget();">deleteWidget</button>
+	<button onClick="updateWidget();">updateWidget</button>
+	<button onClick="updateSurface();">updateSurface</button>
+</body>
+</html>
